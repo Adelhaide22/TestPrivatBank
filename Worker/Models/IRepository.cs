@@ -1,11 +1,12 @@
+using System.Collections.Generic;
 using Contracts;
 
 namespace Worker
 {
     public interface IRepository
     {
-        void AddApplication(AddApplicationMqCommand command);
-        Application GetApplicationByRequestId(GetApplicationByRequestIdMqCommand command);
-        Application GetApplicationByClientId(GetApplicationByClientIdMqCommand command);
+        int AddApplication(AddApplicationMqCommand command);
+        IList<Application> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command);
+        IList<Application> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command);
     }
 }

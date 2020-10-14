@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
@@ -13,20 +14,28 @@ namespace Worker
         {
             db = connection;
         }
-        public void AddApplication(AddApplicationMqCommand command)
+        public int AddApplication(AddApplicationMqCommand command)
         {
-            var sqlQuery = "  "; // SP
-            db.Execute(sqlQuery, command);
+            var p = new DynamicParameters();
+            p.Add("@ClientId", command.ClientId, DbType.Int32);
+            p.Add("@DepartmentAddress", command.DepartmentAddress, DbType.String);
+            p.Add("@Amount", command.Amount, DbType.Decimal);
+            p.Add("@Currency", command.Currency, DbType.String);
+            p.Add("@State", "Ready", DbType.String);
+            
+            return db.Execute("AddApplication", p, commandType: CommandType.StoredProcedure);
         }
 
-        public Application GetApplicationByRequestId(GetApplicationByRequestIdMqCommand command)
+        public IList<Application> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
         {
-            return db.Query<Application>("  ").FirstOrDefault(); // SP
+            return db.Query<Application>("GetApplicationByRequestId", new {command.RequestId}, 
+                commandType: CommandType.StoredProcedure).ToList();
         }
 
-        public Application GetApplicationByClientId(GetApplicationByClientIdMqCommand command)
+        public IList<Application> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
         {
-            return db.Query<Application>("  ").FirstOrDefault(); // SP
+            return db.Query<Application>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
+                commandType: CommandType.StoredProcedure).ToList();
         }
     }
 }

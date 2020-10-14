@@ -1,0 +1,52 @@
+drop database applications_db
+go
+DROP TABLE Application
+go
+
+create database applications_db
+go
+
+create table Application
+(
+    Id int identity primary key,
+    ClientId int,
+    DepartmentAddress nvarchar(30),
+    Amount money not null,
+    Currency nvarchar(3) not null,
+    State nvarchar(15) not null
+);
+go
+
+use applications_db;
+go
+
+create procedure AddApplication
+    @ClientId int,
+    @DepartmentAddress nvarchar(30),
+    @Amount money,
+    @Currency nvarchar(3),
+    @State nvarchar(15)
+as
+insert into Application(ClientId, DepartmentAddress, Amount, Currency, State) 
+values(@ClientId, @DepartmentAddress, @Amount, @Currency, @State)
+select SCOPE_IDENTITY()
+
+go
+create procedure GetApplicationByRequestId 
+    @RequestId int
+as
+select Amount, Currency, State
+from Application
+where Id = @RequestId
+
+go
+create procedure GetApplicationByClientId 
+    @ClientId int,
+    @DepartmentAddress nvarchar(30)
+as
+select Amount, Currency, State
+from Application
+where ClientId = @ClientId 
+and DepartmentAddress = @DepartmentAddress
+
+go

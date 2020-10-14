@@ -30,17 +30,17 @@ namespace Worker
             var addCallback = GetAddCommand(new AddApplicationMqCommand());
             ReceiveMessage(connection, "AddApplicationQueue", GetAddCommand(new AddApplicationMqCommand()));
             var addCommand = addCallback.Item2;
-            _repository.AddApplication(addCommand);
+            var id = _repository.AddApplication(addCommand);
 
             var getByRequestCallback = GetGetByRequestCommand(new GetApplicationByRequestIdMqCommand());
             ReceiveMessage(connection, "GetByRequestQueue", getByRequestCallback);
             var getByRequestCommand = getByRequestCallback.Item2;
-            _repository.GetApplicationByRequestId(getByRequestCommand);
+            var applications = _repository.GetApplicationsByRequestId(getByRequestCommand);
 
             var getByClientCallback = GetGetByClientCommand(new GetApplicationByClientIdMqCommand());
             ReceiveMessage(connection, "GetByClientQueue", getByClientCallback);
             var getByClientCommand = getByClientCallback.Item2;
-            _repository.GetApplicationByClientId(getByClientCommand);
+            applications = _repository.GetApplicationsByClientId(getByClientCommand);
             
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -48,6 +48,7 @@ namespace Worker
                 await Task.Delay(1000, stoppingToken);
             }
         }
+        
         private static void ReceiveMessage(IConnection connection, string queryName, (EventHandler<BasicDeliverEventArgs>, ICommand) callback)
         {
             var channel = connection.CreateModel();
@@ -60,7 +61,7 @@ namespace Worker
 
             var consumer = new EventingBasicConsumer(channel);
             consumer.Received += callback.Item1;
-            channel.BasicConsume(queue: "AddApplicationQueue",
+            channel.BasicConsume(queue: queryName,
                 autoAck: true,
                 consumer: consumer);
         }
