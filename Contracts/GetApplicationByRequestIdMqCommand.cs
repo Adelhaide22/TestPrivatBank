@@ -1,6 +1,6 @@
 namespace Contracts
 {
-    public class GetApplicationByRequestIdMqCommand
+    public class GetApplicationByRequestIdMqCommand : ICommand
     {
         public string RequestId { get; set; }
         
