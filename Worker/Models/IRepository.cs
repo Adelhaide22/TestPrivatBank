@@ -1,11 +1,11 @@
 using Contracts;
 
-namespace QueryHandler
+namespace Worker
 {
     public interface IRepository
     {
         void AddApplication(AddApplicationMqCommand command);
-        GetApplicationByRequestIdMqCommand GetApplicationByRequestId(GetApplicationByRequestIdMqCommand command);
-        GetApplicationByClientIdMqCommand GetApplicationByClientId(GetApplicationByClientIdMqCommand command);
+        Application GetApplicationByRequestId(GetApplicationByRequestIdMqCommand command);
+        Application GetApplicationByClientId(GetApplicationByClientIdMqCommand command);
     }
 }

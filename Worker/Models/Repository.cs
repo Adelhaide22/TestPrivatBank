@@ -1,22 +1,32 @@
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
 using Contracts;
+using Dapper;
 
-namespace QueryHandler
+namespace Worker
 {
     public class Repository : IRepository
     {
+        private IDbConnection db;
+        public Repository(IDbConnection connection)
+        {
+            db = connection;
+        }
         public void AddApplication(AddApplicationMqCommand command)
         {
-            throw new System.NotImplementedException();
+            var sqlQuery = "  "; // SP
+            db.Execute(sqlQuery, command);
         }
 
-        public GetApplicationByRequestIdMqCommand GetApplicationByRequestId(GetApplicationByRequestIdMqCommand command)
+        public Application GetApplicationByRequestId(GetApplicationByRequestIdMqCommand command)
         {
-            throw new System.NotImplementedException();
+            return db.Query<Application>("  ").FirstOrDefault(); // SP
         }
 
-        public GetApplicationByClientIdMqCommand GetApplicationByClientId(GetApplicationByClientIdMqCommand command)
+        public Application GetApplicationByClientId(GetApplicationByClientIdMqCommand command)
         {
-            throw new System.NotImplementedException();
+            return db.Query<Application>("  ").FirstOrDefault(); // SP
         }
     }
 }
