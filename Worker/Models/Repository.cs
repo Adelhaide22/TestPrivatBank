@@ -26,16 +26,20 @@ namespace Worker
             return db.Execute("AddApplication", p, commandType: CommandType.StoredProcedure);
         }
 
-        public IList<Application> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
+        public IList<(decimal Amount, string Currency, string State)> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
         {
             return db.Query<Application>("GetApplicationByRequestId", new {command.RequestId}, 
-                commandType: CommandType.StoredProcedure).ToList();
+                commandType: CommandType.StoredProcedure)
+                .Select(a => (a.Amount, a.Currency, a.State))
+                .ToList();
         }
 
-        public IList<Application> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
+        public IList<(decimal Amount, string Currency, string State)> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
         {
             return db.Query<Application>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
-                commandType: CommandType.StoredProcedure).ToList();
+                commandType: CommandType.StoredProcedure)
+                .Select(a => (a.Amount, a.Currency, a.State))
+                .ToList();
         }
     }
 }
