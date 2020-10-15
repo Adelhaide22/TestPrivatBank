@@ -25,26 +25,32 @@ create procedure AddApplication
     @Currency nvarchar(3),
     @State nvarchar(15)
 as
+begin
 insert into Application(ClientId, DepartmentAddress, Amount, Currency, State) 
 values(@ClientId, @DepartmentAddress, @Amount, @Currency, @State)
 select SCOPE_IDENTITY()
+end;
 
 go
 create procedure GetApplicationByRequestId 
     @RequestId int
 as
+begin
 select Amount, Currency, State
 from Application
 where RequestId = @RequestId
+end;
 
 go
 create procedure GetApplicationByClientId 
     @ClientId int,
     @DepartmentAddress nvarchar(30)
 as
+begin
 select Amount, Currency, State
 from Application
 where ClientId = @ClientId 
 and DepartmentAddress = @DepartmentAddress
+end;
 
 go
