@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
 using Contracts;
 using Dapper;
@@ -23,7 +22,7 @@ namespace Worker
             p.Add("@Currency", command.Currency, DbType.String);
             p.Add("@State", "Ready", DbType.String);
             
-            return db.Execute("AddApplication", p, commandType: CommandType.StoredProcedure);
+            return db.Query<int>("AddApplication", p, commandType: CommandType.StoredProcedure).Single();
         }
 
         public IList<(decimal Amount, string Currency, string State)> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)

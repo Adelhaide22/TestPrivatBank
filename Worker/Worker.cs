@@ -15,6 +15,7 @@ namespace Worker
     {
         private readonly ILogger<Worker> _logger;
         private readonly IRepository _repository;
+        private static IModel channel;
 
         public Worker(ILogger<Worker> logger, IRepository repository)
         {
@@ -25,10 +26,11 @@ namespace Worker
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var connection = GetConnection();
+            channel = connection.CreateModel();
             
-            ReceiveMessage(connection, "AddApplicationQueue", AddApplication);
-            ReceiveMessage(connection, "GetByClientQueue", GetByClientId);
-            ReceiveMessage(connection, "GetByRequestQueue", GetByRequestId);
+            ReceiveMessage("AddApplicationQueue", AddApplication);
+            ReceiveMessage("GetByClientQueue", GetByClientId);
+            ReceiveMessage("GetByRequestQueue", GetByRequestId);
             
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -71,11 +73,9 @@ namespace Worker
             Reply(responseBytes, args);
         }
         
-        private static void ReceiveMessage(IConnection connection, string queryName, EventHandler<BasicDeliverEventArgs> callback)
+        private static void ReceiveMessage(string queueName, EventHandler<BasicDeliverEventArgs> callback)
         {
-            var channel = connection.CreateModel();
-
-            channel.QueueDeclare(queue: queryName,
+            channel.QueueDeclare(queue: queueName,
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -83,24 +83,19 @@ namespace Worker
 
             var consumer = new EventingBasicConsumer(channel);
             consumer.Received += callback;
-            channel.BasicConsume(queue: queryName,
+            channel.BasicConsume(queue: queueName,
                 autoAck: false,
                 consumer: consumer);
-            
-            
         }
 
-        //private byte[] responseBytes;
         private static void Reply(byte[] responseBytes, BasicDeliverEventArgs args)
         {
-            var channel = GetConnection().CreateModel();
-
             var props = args.BasicProperties;
             var replyProps = channel.CreateBasicProperties();
             replyProps.CorrelationId = props.CorrelationId;
             
             channel.BasicPublish(exchange: "", 
-                routingKey: "amq.rabbitmq.reply-to",
+                routingKey: props.ReplyTo,
                 basicProperties: replyProps, 
                 body: responseBytes);
             channel.BasicAck(deliveryTag: args.DeliveryTag,

@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -20,8 +18,7 @@ namespace WebApplication.Controllers
         private readonly ILogger<ApplicationsController> _logger;
         
         private readonly IConnection connection;
-        private readonly IModel channelPublish;
-        private readonly IModel channelConsume;
+        private readonly IModel channel;
         private readonly string replyQueueName;
         private readonly EventingBasicConsumer consumer;
         private readonly BlockingCollection<string> respQueue = new BlockingCollection<string>();
@@ -33,15 +30,12 @@ namespace WebApplication.Controllers
             
             var factory = new ConnectionFactory { HostName = "localhost"};
             connection = factory.CreateConnection();
-            channelPublish = connection.CreateModel();
+            channel = connection.CreateModel();
+
+            replyQueueName = channel.QueueDeclare().QueueName;
+            consumer = new EventingBasicConsumer(channel);
             
-            connection = factory.CreateConnection();
-            channelConsume = connection.CreateModel();
-            
-            replyQueueName = "amq.rabbitmq.reply-to";
-            consumer = new EventingBasicConsumer(channelConsume);
-            
-            props = channelConsume.CreateBasicProperties();
+            props = channel.CreateBasicProperties();
             var correlationId = Guid.NewGuid().ToString();
             props.CorrelationId = correlationId;
             props.ReplyTo = replyQueueName;
@@ -53,7 +47,6 @@ namespace WebApplication.Controllers
                 if (ea.BasicProperties.CorrelationId == correlationId)
                 {
                     respQueue.Add(response);
-                    Console.WriteLine("AAAAAAAA");
                 }
             };
         }
@@ -63,7 +56,7 @@ namespace WebApplication.Controllers
         {
             _logger.LogInformation("Add application: {0}", JsonConvert.SerializeObject(command));
             
-            channelPublish.QueueDeclare(queue: "AddApplicationQueue",
+            channel.QueueDeclare(queue: "AddApplicationQueue",
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -81,19 +74,17 @@ namespace WebApplication.Controllers
             var message = JsonConvert.SerializeObject(mqCommand);
             var body = Encoding.UTF8.GetBytes(message);
 
-            channelPublish.BasicPublish(exchange: "",
+            channel.BasicPublish(exchange: "",
                 routingKey: "AddApplicationQueue",
                 basicProperties: props,
                 body: body);
             
-            channelConsume.BasicConsume(
+            channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
-           var s = respQueue.Count;
-           return Accepted();
-           //return respQueue.Take();
+            return Ok(respQueue.Take());
         }
         
         [HttpGet("ByRequestId")]
@@ -101,7 +92,7 @@ namespace WebApplication.Controllers
         {
             _logger.LogInformation("Get application status with request id: {0}", command.RequestId);
             
-            channelPublish.QueueDeclare(queue: "GetByRequestQueue",
+            channel.QueueDeclare(queue: "GetByRequestQueue",
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -116,17 +107,17 @@ namespace WebApplication.Controllers
             var message = JsonConvert.SerializeObject(mqCommand);
             var body = Encoding.UTF8.GetBytes(message);
 
-            channelPublish.BasicPublish(exchange: "",
+            channel.BasicPublish(exchange: "",
                 routingKey: "GetByRequestQueue",
-                basicProperties: null,
+                basicProperties: props,
                 body: body);
 
-            channelConsume.BasicConsume(
+            channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
-            return Accepted();
+            return Ok(respQueue.Take());
         }
         
         [HttpGet("ByClientId")]
@@ -134,7 +125,7 @@ namespace WebApplication.Controllers
         {
             _logger.LogInformation("Get application status with client id {0}, department address {1}", command.ClientId, command.DepartmentAddress);
             
-            channelPublish.QueueDeclare(queue: "GetByClientQueue",
+            channel.QueueDeclare(queue: "GetByClientQueue",
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -150,17 +141,17 @@ namespace WebApplication.Controllers
             var message = JsonConvert.SerializeObject(mqCommand);
             var body = Encoding.UTF8.GetBytes(message);
 
-            channelPublish.BasicPublish(exchange: "",
+            channel.BasicPublish(exchange: "",
                 routingKey: "GetByClientQueue",
-                basicProperties: null,
+                basicProperties: props,
                 body: body);
 
-            channelConsume.BasicConsume(
+            channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
-            return Accepted();
+            return Ok(respQueue.Take());
         }
     }
 }
