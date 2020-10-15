@@ -1,6 +1,6 @@
 namespace Contracts
 {
-    public class AddApplicationMqCommand : ICommand
+    public class AddApplicationMqCommand
     {
         public string ClientId { get; set; }
         

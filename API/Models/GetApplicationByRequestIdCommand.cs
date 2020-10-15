@@ -1,10 +1,11 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApplication
 {
     public class GetApplicationByRequestIdCommand
     {
-        [BindProperty(Name = "request_id")]
+        [JsonPropertyName("request_id")]
         public string RequestId { get; set; }
     }
 }

@@ -98,7 +98,7 @@ namespace WebApplication.Controllers
             // log errors
         }
         
-        [HttpGet]
+        [HttpGet("ByClientId")]
         public IActionResult GetApplicationStatus(GetApplicationByClientIdCommand command)
         {
             _logger.LogInformation("Get application status with client id {0}, department address {1}", command.ClientId, command.DepartmentAddress);
