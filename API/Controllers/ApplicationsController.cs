@@ -13,11 +13,11 @@ namespace WebApplication.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
+    public class ApplicationsController : ControllerBase
     {
-        private readonly ILogger<WeatherForecastController> _logger;
+        private readonly ILogger<ApplicationsController> _logger;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger)
+        public ApplicationsController(ILogger<ApplicationsController> logger)
         {
             _logger = logger;
         }
@@ -62,7 +62,7 @@ namespace WebApplication.Controllers
         
         //bind json
 
-        [HttpGet]
+        [HttpGet("ByRequestId")]
         public IActionResult GetApplicationStatus(GetApplicationByRequestIdCommand command)
         {
             _logger.LogInformation("Get application status with request id: {0}", command.RequestId);

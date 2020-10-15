@@ -1,23 +1,21 @@
 drop database applications_db
 go
-DROP TABLE Application
-go
 
 create database applications_db
 go
 
+use applications_db;
+go
+
 create table Application
 (
-    Id int identity primary key,
+    RequestId int identity primary key,
     ClientId int,
     DepartmentAddress nvarchar(30),
     Amount money not null,
     Currency nvarchar(3) not null,
     State nvarchar(15) not null
 );
-go
-
-use applications_db;
 go
 
 create procedure AddApplication
@@ -37,7 +35,7 @@ create procedure GetApplicationByRequestId
 as
 select Amount, Currency, State
 from Application
-where Id = @RequestId
+where RequestId = @RequestId
 
 go
 create procedure GetApplicationByClientId 

@@ -1,4 +1,4 @@
-﻿namespace Contracts
+namespace Contracts
 {
     public class AddApplicationMqCommand : ICommand
     {

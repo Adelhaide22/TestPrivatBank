@@ -27,20 +27,9 @@ namespace Worker
             var factory = new ConnectionFactory {HostName = "localhost"};
             using var connection = factory.CreateConnection();
 
-            var addCallback = GetAddCommand(new AddApplicationMqCommand());
-            ReceiveMessage(connection, "AddApplicationQueue", GetAddCommand(new AddApplicationMqCommand()));
-            var addCommand = addCallback.Item2;
-            var id = _repository.AddApplication(addCommand);
-
-            var getByRequestCallback = GetGetByRequestCommand(new GetApplicationByRequestIdMqCommand());
-            ReceiveMessage(connection, "GetByRequestQueue", getByRequestCallback);
-            var getByRequestCommand = getByRequestCallback.Item2;
-            var applications = _repository.GetApplicationsByRequestId(getByRequestCommand);
-
-            var getByClientCallback = GetGetByClientCommand(new GetApplicationByClientIdMqCommand());
-            ReceiveMessage(connection, "GetByClientQueue", getByClientCallback);
-            var getByClientCommand = getByClientCallback.Item2;
-            applications = _repository.GetApplicationsByClientId(getByClientCommand);
+            ReceiveMessage(connection, "AddApplicationQueue", AddApplication);
+            ReceiveMessage(connection, "GetByClientQueue", GetByClientId);
+            ReceiveMessage(connection, "GetByRequestQueue", GetByRequestId);
             
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -48,8 +37,32 @@ namespace Worker
                 await Task.Delay(1000, stoppingToken);
             }
         }
+
+        private void AddApplication(object sender, BasicDeliverEventArgs args)
+        {
+            var body = args.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            var addCommand = JsonConvert.DeserializeObject<AddApplicationMqCommand>(message);
+            _repository.AddApplication(addCommand);
+        }
         
-        private static void ReceiveMessage(IConnection connection, string queryName, (EventHandler<BasicDeliverEventArgs>, ICommand) callback)
+        private void GetByClientId(object sender, BasicDeliverEventArgs args)
+        {
+            var body = args.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
+            _repository.GetApplicationsByClientId(getCommand);
+        }
+        
+        private void GetByRequestId(object sender, BasicDeliverEventArgs args)
+        {
+            var body = args.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
+            _repository.GetApplicationsByRequestId(getCommand);
+        }
+        
+        private static void ReceiveMessage(IConnection connection, string queryName, EventHandler<BasicDeliverEventArgs> callback)
         {
             var channel = connection.CreateModel();
 
@@ -60,40 +73,10 @@ namespace Worker
                 arguments: null);
 
             var consumer = new EventingBasicConsumer(channel);
-            consumer.Received += callback.Item1;
+            consumer.Received += callback;
             channel.BasicConsume(queue: queryName,
                 autoAck: true,
                 consumer: consumer);
-        }
-
-        private static (EventHandler<BasicDeliverEventArgs>, AddApplicationMqCommand) GetAddCommand(AddApplicationMqCommand addCommand)
-        {
-            return ((model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                addCommand = JsonConvert.DeserializeObject<AddApplicationMqCommand>(message);
-            }, addCommand);
-        }
-        
-        private static (EventHandler<BasicDeliverEventArgs>, GetApplicationByRequestIdMqCommand) GetGetByRequestCommand(GetApplicationByRequestIdMqCommand getByRequestCommand)
-        {
-            return ((model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                getByRequestCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
-            }, getByRequestCommand);
-        }
-
-        private static (EventHandler<BasicDeliverEventArgs>, GetApplicationByClientIdMqCommand) GetGetByClientCommand(GetApplicationByClientIdMqCommand getByClientCommand)
-        {
-            return ((model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                getByClientCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
-            }, getByClientCommand);
         }
     }
 }
