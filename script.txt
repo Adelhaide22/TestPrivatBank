@@ -10,8 +10,8 @@ go
 create table Application
 (
     RequestId int identity primary key,
-    ClientId int,
-    DepartmentAddress nvarchar(30),
+    ClientId int not null,
+    DepartmentAddress nvarchar(30) not null,
     Amount money not null,
     Currency nvarchar(3) not null,
     State nvarchar(15) not null

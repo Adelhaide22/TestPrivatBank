@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,51 +36,84 @@ namespace Worker
             
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Worker running at: {time}, awaiting requests", DateTimeOffset.Now);
+                _logger.LogInformation($"Worker running at: {DateTimeOffset.Now}, awaiting requests");
                 await Task.Delay(1000, stoppingToken);
             }
         }
 
         private void AddApplication(object sender, BasicDeliverEventArgs args)
         {
-            var body = args.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-            _logger.LogInformation("Consumer received message: {0}", message);
-            
-            var addCommand = JsonConvert.DeserializeObject<AddApplicationMqCommand>(message);
-            var response = _repository.AddApplication(addCommand);
-            _logger.LogInformation("Creating response: {0}", response);
-            
-            var responseBytes = Encoding.UTF8.GetBytes(response.ToString());
-            Reply(responseBytes, args);
+            var response = string.Empty;
+            try
+            {
+                var body = args.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                _logger.LogInformation($"Consumer received message: {message}");
+
+                var addCommand = JsonConvert.DeserializeObject<AddApplicationMqCommand>(message);
+                response = _repository.AddApplication(addCommand).ToString();
+                _logger.LogInformation($"Response from database: {response}");
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message);
+                response = "";
+            }
+            finally
+            {
+                var responseBytes = Encoding.UTF8.GetBytes(response);
+                Reply(responseBytes, args);
+            }
         }
         
         private void GetByClientId(object sender, BasicDeliverEventArgs args)
         {
-            var body = args.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-            _logger.LogInformation("Consumer received message: {0}", message);
-            
-            var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
-            var response = _repository.GetApplicationsByClientId(getCommand);
-            _logger.LogInformation("Creating response: {0}", response);
+            IList<object> response = Enumerable.Empty<object>().ToList();
+            try
+            {
+                var body = args.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                _logger.LogInformation($"Consumer received message: {message}");
 
-            var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
-            Reply(responseBytes, args);
+                var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
+                response = _repository.GetApplicationsByClientId(getCommand);
+                _logger.LogInformation($"Response from database: {response}");
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message);
+                response = Enumerable.Empty<object>().ToList();
+            }
+            finally
+            {
+                var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
+                Reply(responseBytes, args);
+            }
         }
         
         private void GetByRequestId(object sender, BasicDeliverEventArgs args)
         {
-            var body = args.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-            _logger.LogInformation("Consumer received message: {0}", message);
-            
-            var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
-            var response = _repository.GetApplicationsByRequestId(getCommand);
-            _logger.LogInformation("Creating response: {0}", response);
-            
-            var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
-            Reply(responseBytes, args);
+            IList<object> response = Enumerable.Empty<object>().ToList();
+            try
+            {
+                var body = args.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                _logger.LogInformation($"Consumer received message: {message}");
+
+                var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
+                response = _repository.GetApplicationsByRequestId(getCommand);
+                _logger.LogInformation($"Response from database: {response}");
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message);
+                response = Enumerable.Empty<object>().ToList();
+            }
+            finally
+            {
+                var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
+                Reply(responseBytes, args);
+            }
         }
         
         private void ReceiveMessage(string queueName, EventHandler<BasicDeliverEventArgs> callback)
@@ -111,7 +146,7 @@ namespace Worker
             _channel.BasicAck(deliveryTag: args.DeliveryTag,
                 multiple: false);
 
-            _logger.LogInformation("Sent response: {0}", Encoding.UTF8.GetString(responseBytes));
+            _logger.LogInformation($"Sent response: {Encoding.UTF8.GetString(responseBytes)}");
         }
 
         private static IConnection GetConnection()

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Text;
-using System.Threading.Tasks;
 using Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -54,7 +53,16 @@ namespace WebApplication.Controllers
         [HttpPost]
         public IActionResult AddApplication(AddApplicationCommand command)
         {
-            _logger.LogInformation("Processing request: {0}", JsonConvert.SerializeObject(command));
+            if (string.IsNullOrEmpty(command.Currency)
+                || string.IsNullOrEmpty(command.ClientId)
+                || string.IsNullOrEmpty(command.DepartmentAddress)
+                || command.Amount == 0)
+            {
+                _logger.LogError("Request is invalid");
+                return BadRequest();
+            }
+            
+            _logger.LogInformation($"Processing request: {JsonConvert.SerializeObject(command)}");
             
             channel.QueueDeclare(queue: "AddApplicationQueue",
                 durable: false,
@@ -71,31 +79,43 @@ namespace WebApplication.Controllers
                 ClientIp = HttpContext.Connection.RemoteIpAddress.ToString(),
             };
 
-            var message = JsonConvert.SerializeObject(mqCommand);
-            var body = Encoding.UTF8.GetBytes(message);
+            try
+            {
+                var message = JsonConvert.SerializeObject(mqCommand);
+                var body = Encoding.UTF8.GetBytes(message);
 
-            channel.BasicPublish(exchange: "",
-                routingKey: "AddApplicationQueue",
-                basicProperties: props,
-                body: body);
-            _logger.LogInformation("Sent message: {0}", message);
-            
+                channel.BasicPublish(exchange: "",
+                    routingKey: "AddApplicationQueue",
+                    basicProperties: props,
+                    body: body);
+                _logger.LogInformation($"Sent message: {message}" );
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"{e.Message}");
+                return BadRequest();
+            }
+
             channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
-
             
             var response = respQueue.Take();
            
-            _logger.LogInformation("Received message from server: {0}", response);
+            _logger.LogInformation($"Received message from server: {response}");
             return Ok(response);
         }
         
         [HttpGet("ByRequestId")]
         public IActionResult GetApplicationStatus(GetApplicationByRequestIdCommand command)
         {
-            _logger.LogInformation("Processing request: {0}", JsonConvert.SerializeObject(command));
+            if (string.IsNullOrEmpty(command.RequestId))
+            {
+                _logger.LogError("Request is invalid");
+                return NotFound();
+            }
+            _logger.LogInformation($"Processing request: {JsonConvert.SerializeObject(command)}");
             
             channel.QueueDeclare(queue: "GetByRequestQueue",
                 durable: false,
@@ -116,21 +136,29 @@ namespace WebApplication.Controllers
                 routingKey: "GetByRequestQueue",
                 basicProperties: props,
                 body: body);
-            _logger.LogInformation("Sent message: {0}", message);
+            _logger.LogInformation($"Sent message: {message}");
             
             channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
-            _logger.LogInformation("Received message from server: {0}", respQueue.Take());
-            return Ok(respQueue.Take());
+            var response = respQueue.Take();
+           
+            _logger.LogInformation($"Received message from server: {response}");
+            return Ok(response);
         }
         
         [HttpGet("ByClientId")]
         public IActionResult GetApplicationStatus(GetApplicationByClientIdCommand command)
         {
-            _logger.LogInformation("Processing request: {0}", JsonConvert.SerializeObject(command));
+            _logger.LogInformation($"Processing request: {JsonConvert.SerializeObject(command)}");
+            
+            if (string.IsNullOrEmpty(command.ClientId) || string.IsNullOrEmpty(command.DepartmentAddress))
+            {
+                _logger.LogError("Request is invalid");
+                return NotFound();
+            }
             
             channel.QueueDeclare(queue: "GetByClientQueue",
                 durable: false,
@@ -152,15 +180,17 @@ namespace WebApplication.Controllers
                 routingKey: "GetByClientQueue",
                 basicProperties: props,
                 body: body);
-            _logger.LogInformation("Sent message: {0}", message);
+            _logger.LogInformation($"Sent message: {message}");
 
             channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
-            _logger.LogInformation("Received message from server: {0}", respQueue.Take());
-            return Ok(respQueue.Take());
+            var response = respQueue.Take();
+           
+            _logger.LogInformation($"Received message from server: {response}");
+            return Ok(response);
         }
     }
 }
