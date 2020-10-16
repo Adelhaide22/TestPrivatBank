@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Text;
-using System.Threading;
+using System.Threading.Tasks;
 using Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -54,7 +54,7 @@ namespace WebApplication.Controllers
         [HttpPost]
         public IActionResult AddApplication(AddApplicationCommand command)
         {
-            _logger.LogInformation("Add application: {0}", JsonConvert.SerializeObject(command));
+            _logger.LogInformation("Processing request: {0}", JsonConvert.SerializeObject(command));
             
             channel.QueueDeclare(queue: "AddApplicationQueue",
                 durable: false,
@@ -78,19 +78,24 @@ namespace WebApplication.Controllers
                 routingKey: "AddApplicationQueue",
                 basicProperties: props,
                 body: body);
+            _logger.LogInformation("Sent message: {0}", message);
             
             channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
-            return Ok(respQueue.Take());
+            
+            var response = respQueue.Take();
+           
+            _logger.LogInformation("Received message from server: {0}", response);
+            return Ok(response);
         }
         
         [HttpGet("ByRequestId")]
         public IActionResult GetApplicationStatus(GetApplicationByRequestIdCommand command)
         {
-            _logger.LogInformation("Get application status with request id: {0}", command.RequestId);
+            _logger.LogInformation("Processing request: {0}", JsonConvert.SerializeObject(command));
             
             channel.QueueDeclare(queue: "GetByRequestQueue",
                 durable: false,
@@ -111,19 +116,21 @@ namespace WebApplication.Controllers
                 routingKey: "GetByRequestQueue",
                 basicProperties: props,
                 body: body);
-
+            _logger.LogInformation("Sent message: {0}", message);
+            
             channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
+            _logger.LogInformation("Received message from server: {0}", respQueue.Take());
             return Ok(respQueue.Take());
         }
         
         [HttpGet("ByClientId")]
         public IActionResult GetApplicationStatus(GetApplicationByClientIdCommand command)
         {
-            _logger.LogInformation("Get application status with client id {0}, department address {1}", command.ClientId, command.DepartmentAddress);
+            _logger.LogInformation("Processing request: {0}", JsonConvert.SerializeObject(command));
             
             channel.QueueDeclare(queue: "GetByClientQueue",
                 durable: false,
@@ -145,12 +152,14 @@ namespace WebApplication.Controllers
                 routingKey: "GetByClientQueue",
                 basicProperties: props,
                 body: body);
+            _logger.LogInformation("Sent message: {0}", message);
 
             channel.BasicConsume(
                 consumer: consumer,
                 queue: replyQueueName,
                 autoAck: true);
 
+            _logger.LogInformation("Received message from server: {0}", respQueue.Take());
             return Ok(respQueue.Take());
         }
     }

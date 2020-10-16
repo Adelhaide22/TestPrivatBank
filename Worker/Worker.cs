@@ -15,7 +15,7 @@ namespace Worker
     {
         private readonly ILogger<Worker> _logger;
         private readonly IRepository _repository;
-        private static IModel channel;
+        private static IModel _channel;
 
         public Worker(ILogger<Worker> logger, IRepository repository)
         {
@@ -26,7 +26,7 @@ namespace Worker
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var connection = GetConnection();
-            channel = connection.CreateModel();
+            _channel = connection.CreateModel();
             
             ReceiveMessage("AddApplicationQueue", AddApplication);
             ReceiveMessage("GetByClientQueue", GetByClientId);
@@ -34,7 +34,7 @@ namespace Worker
             
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+                _logger.LogInformation("Worker running at: {time}, awaiting requests", DateTimeOffset.Now);
                 await Task.Delay(1000, stoppingToken);
             }
         }
@@ -42,10 +42,12 @@ namespace Worker
         private void AddApplication(object sender, BasicDeliverEventArgs args)
         {
             var body = args.Body.ToArray();
-            
             var message = Encoding.UTF8.GetString(body);
+            _logger.LogInformation("Consumer received message: {0}", message);
+            
             var addCommand = JsonConvert.DeserializeObject<AddApplicationMqCommand>(message);
             var response = _repository.AddApplication(addCommand);
+            _logger.LogInformation("Creating response: {0}", response);
             
             var responseBytes = Encoding.UTF8.GetBytes(response.ToString());
             Reply(responseBytes, args);
@@ -55,8 +57,11 @@ namespace Worker
         {
             var body = args.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
+            _logger.LogInformation("Consumer received message: {0}", message);
+            
             var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
             var response = _repository.GetApplicationsByClientId(getCommand);
+            _logger.LogInformation("Creating response: {0}", response);
 
             var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
             Reply(responseBytes, args);
@@ -66,40 +71,47 @@ namespace Worker
         {
             var body = args.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
+            _logger.LogInformation("Consumer received message: {0}", message);
+            
             var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
             var response = _repository.GetApplicationsByRequestId(getCommand);
+            _logger.LogInformation("Creating response: {0}", response);
             
             var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
             Reply(responseBytes, args);
         }
         
-        private static void ReceiveMessage(string queueName, EventHandler<BasicDeliverEventArgs> callback)
+        private void ReceiveMessage(string queueName, EventHandler<BasicDeliverEventArgs> callback)
         {
-            channel.QueueDeclare(queue: queueName,
+            _channel.QueueDeclare(queue: queueName,
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
                 arguments: null);
 
-            var consumer = new EventingBasicConsumer(channel);
+            var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += callback;
-            channel.BasicConsume(queue: queueName,
+            _channel.BasicConsume(queue: queueName,
                 autoAck: false,
                 consumer: consumer);
+
+            _logger.LogInformation("Message has been received");
         }
 
-        private static void Reply(byte[] responseBytes, BasicDeliverEventArgs args)
+        private void Reply(byte[] responseBytes, BasicDeliverEventArgs args)
         {
             var props = args.BasicProperties;
-            var replyProps = channel.CreateBasicProperties();
+            var replyProps = _channel.CreateBasicProperties();
             replyProps.CorrelationId = props.CorrelationId;
             
-            channel.BasicPublish(exchange: "", 
+            _channel.BasicPublish(exchange: "", 
                 routingKey: props.ReplyTo,
                 basicProperties: replyProps, 
                 body: responseBytes);
-            channel.BasicAck(deliveryTag: args.DeliveryTag,
+            _channel.BasicAck(deliveryTag: args.DeliveryTag,
                 multiple: false);
+
+            _logger.LogInformation("Sent response: {0}", Encoding.UTF8.GetString(responseBytes));
         }
 
         private static IConnection GetConnection()

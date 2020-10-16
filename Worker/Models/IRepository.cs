@@ -6,7 +6,7 @@ namespace Worker
     public interface IRepository
     {
         int AddApplication(AddApplicationMqCommand command);
-        IList<(decimal Amount, string Currency, string State)> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command);
-        IList<(decimal Amount, string Currency, string State)> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command);
+        IList<object> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command);
+        IList<object> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command);
     }
 }

@@ -25,19 +25,29 @@ namespace Worker
             return db.Query<int>("AddApplication", p, commandType: CommandType.StoredProcedure).Single();
         }
 
-        public IList<(decimal Amount, string Currency, string State)> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
+        public IList<object> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
         {
             return db.Query<Application>("GetApplicationByRequestId", new {command.RequestId}, 
                 commandType: CommandType.StoredProcedure)
-                .Select(a => (a.Amount, a.Currency, a.State))
+                .Select(a => (object)new
+                {
+                    Amount = a.Amount, 
+                    Currency = a.Currency, 
+                    State = a.State
+                })
                 .ToList();
         }
 
-        public IList<(decimal Amount, string Currency, string State)> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
+        public IList<object> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
         {
             return db.Query<Application>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
                 commandType: CommandType.StoredProcedure)
-                .Select(a => (a.Amount, a.Currency, a.State))
+                .Select(a => (object)new
+                {
+                    Amount = a.Amount, 
+                    Currency = a.Currency, 
+                    State = a.State
+                })
                 .ToList();
         }
     }
