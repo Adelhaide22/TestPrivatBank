@@ -19,6 +19,10 @@ namespace Worker
         private readonly IRepository _repository;
         private readonly IConnection _connection;
         private static IModel _channel;
+        
+        private const string AddQueueName = "AddApplicationQueue";
+        private const string GetByRequestIdQueueName = "GetByRequestQueue";
+        private const string GetByClientIdQueueName = "GetByClientQueue";
 
         public Worker(ILogger<Worker> logger, IRepository repository, IConnection connection)
         {
@@ -31,9 +35,9 @@ namespace Worker
         {
             _channel = _connection.CreateModel();
             
-            ReceiveMessage("AddApplicationQueue", AddApplication);
-            ReceiveMessage("GetByClientQueue", GetByClientId);
-            ReceiveMessage("GetByRequestQueue", GetByRequestId);
+            ReceiveMessage(AddQueueName, AddApplication);
+            ReceiveMessage(GetByClientIdQueueName, GetByClientId);
+            ReceiveMessage(GetByRequestIdQueueName, GetByRequestId);
             
             while (!stoppingToken.IsCancellationRequested)
             {

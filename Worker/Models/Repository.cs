@@ -10,12 +10,12 @@ namespace Worker
 {
     public class Repository : IRepository
     {
-        private readonly IDbConnection db;
+        private readonly IDbConnection _db;
         private readonly ILogger<Repository> _logger;
 
         public Repository(IDbConnection connection, ILogger<Repository> logger)
         {
-            db = connection;
+            _db = connection;
             _logger = logger;
         }
         public int AddApplication(AddApplicationMqCommand command)
@@ -29,7 +29,7 @@ namespace Worker
             
             try
             {
-                return db.Query<int>("AddApplication", p, commandType: CommandType.StoredProcedure).Single();
+                return _db.Query<int>("AddApplication", p, commandType: CommandType.StoredProcedure).Single();
             }
             catch (SqlException e)
             {
@@ -42,7 +42,7 @@ namespace Worker
         { 
             try
             {
-                return db.Query<Application>("GetApplicationByRequestId", new {command.RequestId}, commandType: CommandType.StoredProcedure)
+                return _db.Query<Application>("GetApplicationByRequestId", new {command.RequestId}, commandType: CommandType.StoredProcedure)
                 .Select(a => (object)new
                 {
                     Amount = a.Amount, 
@@ -62,7 +62,7 @@ namespace Worker
         {
             try
             {
-                return db.Query<Application>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
+                return _db.Query<Application>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
                 commandType: CommandType.StoredProcedure)
                 .Select(a => (object)new
                 {

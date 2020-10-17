@@ -30,8 +30,8 @@ namespace Worker
                     var dbConnectionString = configuration.GetConnectionString("SqlServer");
                     var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMQ");
                     
-                    services.AddTransient<IDbConnection>(sp => new SqlConnection(dbConnectionString));
-                    services.AddTransient(sp => new ConnectionFactory {HostName = rabbitMqConnectionString}.CreateConnection());
+                    services.AddScoped<IDbConnection>(sp => new SqlConnection(dbConnectionString));
+                    services.AddScoped(sp => new ConnectionFactory {HostName = rabbitMqConnectionString}.CreateConnection());
                 });
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Net;
 using System.Text;
 using Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -15,37 +16,36 @@ namespace WebApplication.Controllers
     public class ApplicationsController : ControllerBase
     {
         private readonly ILogger<ApplicationsController> _logger;
+        private readonly IModel _channel;
+        private readonly string _replyQueueName;
+        private readonly EventingBasicConsumer _consumer;
+        private readonly BlockingCollection<string> _respQueue = new BlockingCollection<string>();
+        private readonly IBasicProperties _props;
         
-        private readonly IConnection connection;
-        private readonly IModel channel;
-        private readonly string replyQueueName;
-        private readonly EventingBasicConsumer consumer;
-        private readonly BlockingCollection<string> respQueue = new BlockingCollection<string>();
-        private readonly IBasicProperties props;
+        private const string AddQueueName = "AddApplicationQueue";
+        private const string GetByRequestIdQueueName = "GetByRequestQueue";
+        private const string GetByClientIdQueueName = "GetByClientQueue";
 
-        public ApplicationsController(ILogger<ApplicationsController> logger)
+        public ApplicationsController(ILogger<ApplicationsController> logger, IConnection connection)
         {
             _logger = logger;
-            
-            var factory = new ConnectionFactory { HostName = "192.168.1.7"};
-            connection = factory.CreateConnection();
-            channel = connection.CreateModel();
+            _channel = connection.CreateModel();
 
-            replyQueueName = channel.QueueDeclare().QueueName;
-            consumer = new EventingBasicConsumer(channel);
+            _replyQueueName = _channel.QueueDeclare().QueueName;
+            _consumer = new EventingBasicConsumer(_channel);
             
-            props = channel.CreateBasicProperties();
+            _props = _channel.CreateBasicProperties();
             var correlationId = Guid.NewGuid().ToString();
-            props.CorrelationId = correlationId;
-            props.ReplyTo = replyQueueName;
+            _props.CorrelationId = correlationId;
+            _props.ReplyTo = _replyQueueName;
 
-            consumer.Received += (model, ea) =>
+            _consumer.Received += (model, ea) =>
             {
                 var body = ea.Body.ToArray();
                 var response = Encoding.UTF8.GetString(body);
                 if (ea.BasicProperties.CorrelationId == correlationId)
                 {
-                    respQueue.Add(response);
+                    _respQueue.Add(response);
                 }
             };
         }
@@ -64,7 +64,7 @@ namespace WebApplication.Controllers
             
             _logger.LogInformation($"Processing request: {JsonConvert.SerializeObject(command)}");
             
-            channel.QueueDeclare(queue: "AddApplicationQueue",
+            _channel.QueueDeclare(queue: AddQueueName,
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -79,29 +79,31 @@ namespace WebApplication.Controllers
                 ClientIp = HttpContext.Connection.RemoteIpAddress.ToString(),
             };
 
+            string message;
             try
             {
-                var message = JsonConvert.SerializeObject(mqCommand);
+                message = JsonConvert.SerializeObject(mqCommand);
                 var body = Encoding.UTF8.GetBytes(message);
 
-                channel.BasicPublish(exchange: "",
-                    routingKey: "AddApplicationQueue",
-                    basicProperties: props,
+                _channel.BasicPublish(exchange: "",
+                    routingKey: AddQueueName,
+                    basicProperties: _props,
                     body: body);
-                _logger.LogInformation($"Sent message: {message}" );
             }
             catch (Exception e)
             {
-                _logger.LogError($"{e.Message}");
-                return BadRequest();
+                _logger.LogError($"Error from message queue: {e.Message}");
+                return StatusCode((int)HttpStatusCode.BadGateway);
             }
+            
+            _logger.LogInformation($"Sent message: {message}" );
 
-            channel.BasicConsume(
-                consumer: consumer,
-                queue: replyQueueName,
+            _channel.BasicConsume(
+                consumer: _consumer,
+                queue: _replyQueueName,
                 autoAck: true);
             
-            var response = respQueue.Take();
+            var response = _respQueue.Take();
            
             _logger.LogInformation($"Received message from server: {response}");
             return Ok(response);
@@ -117,7 +119,7 @@ namespace WebApplication.Controllers
             }
             _logger.LogInformation($"Processing request: {JsonConvert.SerializeObject(command)}");
             
-            channel.QueueDeclare(queue: "GetByRequestQueue",
+            _channel.QueueDeclare(queue: GetByRequestIdQueueName,
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -128,22 +130,32 @@ namespace WebApplication.Controllers
                 RequestId = command.RequestId,
                 ClientIp = HttpContext.Connection.RemoteIpAddress.ToString(),
             };
-            
-            var message = JsonConvert.SerializeObject(mqCommand);
-            var body = Encoding.UTF8.GetBytes(message);
 
-            channel.BasicPublish(exchange: "",
-                routingKey: "GetByRequestQueue",
-                basicProperties: props,
-                body: body);
+            string message;
+            
+            try
+            {
+                message = JsonConvert.SerializeObject(mqCommand);
+                var body = Encoding.UTF8.GetBytes(message);
+                _channel.BasicPublish(exchange: "",
+                    routingKey: GetByRequestIdQueueName,
+                    basicProperties: _props,
+                    body: body);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error from message queue: {e.Message}");
+                return StatusCode((int)HttpStatusCode.BadGateway);
+            }
+            
             _logger.LogInformation($"Sent message: {message}");
             
-            channel.BasicConsume(
-                consumer: consumer,
-                queue: replyQueueName,
+            _channel.BasicConsume(
+                consumer: _consumer,
+                queue: _replyQueueName,
                 autoAck: true);
 
-            var response = respQueue.Take();
+            var response = _respQueue.Take();
            
             _logger.LogInformation($"Received message from server: {response}");
             return Ok(response);
@@ -160,7 +172,7 @@ namespace WebApplication.Controllers
                 return NotFound();
             }
             
-            channel.QueueDeclare(queue: "GetByClientQueue",
+            _channel.QueueDeclare(queue: GetByClientIdQueueName,
                 durable: false,
                 exclusive: false,
                 autoDelete: false,
@@ -173,21 +185,30 @@ namespace WebApplication.Controllers
                 ClientIp = HttpContext.Connection.RemoteIpAddress.ToString(),
             };
             
-            var message = JsonConvert.SerializeObject(mqCommand);
-            var body = Encoding.UTF8.GetBytes(message);
-
-            channel.BasicPublish(exchange: "",
-                routingKey: "GetByClientQueue",
-                basicProperties: props,
-                body: body);
+            string message;
+            
+            try
+            {
+                message = JsonConvert.SerializeObject(mqCommand);
+                var body = Encoding.UTF8.GetBytes(message);
+                _channel.BasicPublish(exchange: "",
+                    routingKey: GetByClientIdQueueName,
+                    basicProperties: _props,
+                    body: body);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error from message queue: {e.Message}");
+                return StatusCode((int)HttpStatusCode.BadGateway);
+            }
             _logger.LogInformation($"Sent message: {message}");
-
-            channel.BasicConsume(
-                consumer: consumer,
-                queue: replyQueueName,
+                
+            _channel.BasicConsume(
+                consumer: _consumer,
+                queue: _replyQueueName,
                 autoAck: true);
 
-            var response = respQueue.Take();
+            var response = _respQueue.Take();
            
             _logger.LogInformation($"Received message from server: {response}");
             return Ok(response);
