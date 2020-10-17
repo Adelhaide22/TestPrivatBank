@@ -38,15 +38,15 @@ namespace Worker
             }
         }
 
-        public IList<object> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
+        public IList<ApplicationModel> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
         { 
             try
             {
-                return _db.Query<Application>("GetApplicationByRequestId", new {command.RequestId}, commandType: CommandType.StoredProcedure)
-                .Select(a => (object)new
+                return _db.Query<ApplicationModel>("GetApplicationByRequestId", new {command.RequestId}, commandType: CommandType.StoredProcedure)
+                .Select(a => new ApplicationModel
                 {
                     Amount = a.Amount, 
-                    Currency = a.Currency, 
+                    Currency = a.Currency,
                     State = a.State
                 })
                 .ToList();
@@ -58,13 +58,13 @@ namespace Worker
             }
         }
 
-        public IList<object> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
+        public IList<ApplicationModel> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
         {
             try
             {
-                return _db.Query<Application>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
+                return _db.Query<ApplicationModel>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
                 commandType: CommandType.StoredProcedure)
-                .Select(a => (object)new
+                .Select(a => new ApplicationModel
                 {
                     Amount = a.Amount, 
                     Currency = a.Currency, 

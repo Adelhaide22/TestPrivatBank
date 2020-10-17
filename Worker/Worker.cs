@@ -35,9 +35,9 @@ namespace Worker
         {
             _channel = _connection.CreateModel();
             
-            ReceiveMessage(AddQueueName, AddApplication);
-            ReceiveMessage(GetByClientIdQueueName, GetByClientId);
-            ReceiveMessage(GetByRequestIdQueueName, GetByRequestId);
+            SubscribeToQueue(AddQueueName, AddApplication);
+            SubscribeToQueue(GetByClientIdQueueName, GetByClientId);
+            SubscribeToQueue(GetByRequestIdQueueName, GetByRequestId);
             
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -58,22 +58,19 @@ namespace Worker
                 var addCommand = JsonConvert.DeserializeObject<AddApplicationMqCommand>(message);
                 response = _repository.AddApplication(addCommand).ToString();
                 _logger.LogInformation($"Response from database: {response}");
+                
+                var responseBytes = Encoding.UTF8.GetBytes(response);
+                Reply(responseBytes, args);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.Message);
-                response = "";
-            }
-            finally
-            {
-                var responseBytes = Encoding.UTF8.GetBytes(response);
-                Reply(responseBytes, args);
             }
         }
         
         private void GetByClientId(object sender, BasicDeliverEventArgs args)
         {
-            IList<object> response = Enumerable.Empty<object>().ToList();
+            var response = Enumerable.Empty<ApplicationModel>();
             try
             {
                 var body = args.Body.ToArray();
@@ -81,24 +78,21 @@ namespace Worker
                 _logger.LogInformation($"Consumer received message: {message}");
 
                 var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
-                response = _repository.GetApplicationsByClientId(getCommand);
+                response = _repository.GetApplicationsByClientId(getCommand).ToList();
                 _logger.LogInformation($"Response from database: {response}");
+                
+                var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
+                Reply(responseBytes, args);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.Message);
-                response = Enumerable.Empty<object>().ToList();
-            }
-            finally
-            {
-                var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
-                Reply(responseBytes, args);
             }
         }
         
         private void GetByRequestId(object sender, BasicDeliverEventArgs args)
         {
-            IList<object> response = Enumerable.Empty<object>().ToList();
+            var response = Enumerable.Empty<ApplicationModel>();
             try
             {
                 var body = args.Body.ToArray();
@@ -106,22 +100,19 @@ namespace Worker
                 _logger.LogInformation($"Consumer received message: {message}");
 
                 var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
-                response = _repository.GetApplicationsByRequestId(getCommand);
+                response = _repository.GetApplicationsByRequestId(getCommand).ToList();
                 _logger.LogInformation($"Response from database: {response}");
+
+                var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
+                Reply(responseBytes, args);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.Message);
-                response = Enumerable.Empty<object>().ToList();
-            }
-            finally
-            {
-                var responseBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response));
-                Reply(responseBytes, args);
             }
         }
         
-        private void ReceiveMessage(string queueName, EventHandler<BasicDeliverEventArgs> callback)
+        private void SubscribeToQueue(string queueName, EventHandler<BasicDeliverEventArgs> callback)
         {
             _channel.QueueDeclare(queue: queueName,
                 durable: false,
@@ -134,8 +125,6 @@ namespace Worker
             _channel.BasicConsume(queue: queueName,
                 autoAck: false,
                 consumer: consumer);
-
-            _logger.LogInformation("Message has been received");
         }
 
         private void Reply(byte[] responseBytes, BasicDeliverEventArgs args)
