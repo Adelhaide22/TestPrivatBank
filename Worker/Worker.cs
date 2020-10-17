@@ -17,18 +17,19 @@ namespace Worker
     {
         private readonly ILogger<Worker> _logger;
         private readonly IRepository _repository;
+        private readonly IConnection _connection;
         private static IModel _channel;
 
-        public Worker(ILogger<Worker> logger, IRepository repository)
+        public Worker(ILogger<Worker> logger, IRepository repository, IConnection connection)
         {
             _logger = logger;
             _repository = repository;
+            _connection = connection;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var connection = GetConnection();
-            _channel = connection.CreateModel();
+            _channel = _connection.CreateModel();
             
             ReceiveMessage("AddApplicationQueue", AddApplication);
             ReceiveMessage("GetByClientQueue", GetByClientId);
@@ -147,12 +148,6 @@ namespace Worker
                 multiple: false);
 
             _logger.LogInformation($"Sent response: {Encoding.UTF8.GetString(responseBytes)}");
-        }
-
-        private static IConnection GetConnection()
-        {
-            var factory = new ConnectionFactory {HostName = "localhost"};
-            return factory.CreateConnection();
         }
     }
 }

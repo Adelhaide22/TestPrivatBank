@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using RabbitMQ.Client;
 
 namespace WebApplication
 {
@@ -19,6 +20,9 @@ namespace WebApplication
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            
+            var rabbitMqConnectionString = Configuration.GetConnectionString("RabbitMQ");
+            services.AddTransient(sp => new ConnectionFactory {HostName = rabbitMqConnectionString}.CreateConnection());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -4,6 +4,7 @@ using System.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using RabbitMQ.Client;
 
 namespace Worker
 {
@@ -27,8 +28,10 @@ namespace Worker
                         .Build();
                     
                     var dbConnectionString = configuration.GetConnectionString("SqlServer");
-
+                    var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMQ");
+                    
                     services.AddTransient<IDbConnection>(sp => new SqlConnection(dbConnectionString));
+                    services.AddTransient(sp => new ConnectionFactory {HostName = rabbitMqConnectionString}.CreateConnection());
                 });
     }
 }

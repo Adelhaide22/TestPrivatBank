@@ -27,7 +27,7 @@ namespace WebApplication.Controllers
         {
             _logger = logger;
             
-            var factory = new ConnectionFactory { HostName = "localhost"};
+            var factory = new ConnectionFactory { HostName = "192.168.1.7"};
             connection = factory.CreateConnection();
             channel = connection.CreateModel();
 
