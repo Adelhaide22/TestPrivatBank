@@ -133,13 +133,16 @@ namespace Worker
             var props = args.BasicProperties;
             var replyProps = _channel.CreateBasicProperties();
             replyProps.CorrelationId = props.CorrelationId;
-            
-            _channel.BasicPublish(exchange: "", 
-                routingKey: props.ReplyTo,
-                basicProperties: replyProps, 
-                body: responseBytes);
-            _channel.BasicAck(deliveryTag: args.DeliveryTag,
-                multiple: false);
+
+            if (props.ReplyTo != null)
+            {
+                _channel.BasicPublish(exchange: "", 
+                    routingKey: props.ReplyTo,
+                    basicProperties: replyProps, 
+                    body: responseBytes);
+                _channel.BasicAck(deliveryTag: args.DeliveryTag,
+                    multiple: false);
+            }
 
             _logger.LogInformation($"Sent response: {Encoding.UTF8.GetString(responseBytes)}");
         }
