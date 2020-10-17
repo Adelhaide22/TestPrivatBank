@@ -5,8 +5,9 @@ using System.Linq;
 using Contracts;
 using Dapper;
 using Microsoft.Extensions.Logging;
+using Worker.Models;
 
-namespace Worker
+namespace Worker.Repositories
 {
     public class Repository : IRepository
     {
@@ -38,18 +39,11 @@ namespace Worker
             }
         }
 
-        public IList<ApplicationModel> GetApplicationsByRequestId(GetApplicationByRequestIdMqCommand command)
+        public IList<ApplicationModel> GetApplicationsByRequestId(GetApplicationByRequestIdMqQuery command)
         { 
             try
             {
-                return _db.Query<ApplicationModel>("GetApplicationByRequestId", new {command.RequestId}, commandType: CommandType.StoredProcedure)
-                .Select(a => new ApplicationModel
-                {
-                    Amount = a.Amount, 
-                    Currency = a.Currency,
-                    State = a.State
-                })
-                .ToList();
+                return _db.Query<ApplicationModel>("GetApplicationByRequestId", new {command.RequestId}, commandType: CommandType.StoredProcedure).ToList();
             }
             catch (SqlException e)
             {
@@ -58,19 +52,11 @@ namespace Worker
             }
         }
 
-        public IList<ApplicationModel> GetApplicationsByClientId(GetApplicationByClientIdMqCommand command)
+        public IList<ApplicationModel> GetApplicationsByClientId(GetApplicationByClientIdMqQuery command)
         {
             try
             {
-                return _db.Query<ApplicationModel>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, 
-                commandType: CommandType.StoredProcedure)
-                .Select(a => new ApplicationModel
-                {
-                    Amount = a.Amount, 
-                    Currency = a.Currency, 
-                    State = a.State
-                })
-                .ToList();
+                return _db.Query<ApplicationModel>("GetApplicationByClientId", new {command.ClientId, command.DepartmentAddress}, commandType: CommandType.StoredProcedure).ToList();
             }
             catch (SqlException e)
             {

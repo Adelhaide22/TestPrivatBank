@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 
-namespace WebApplication
+namespace WebApplication.Models
 {
-    public class GetApplicationByClientIdCommand
+    public class GetApplicationByClientIdQuery
     {
         [JsonPropertyName("client_id")]
         public string ClientId { get; set; }

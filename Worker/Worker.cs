@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -10,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Worker.Models;
+using Worker.Repositories;
 
 namespace Worker
 {
@@ -77,7 +78,7 @@ namespace Worker
                 var message = Encoding.UTF8.GetString(body);
                 _logger.LogInformation($"Consumer received message: {message}");
 
-                var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqCommand>(message);
+                var getCommand = JsonConvert.DeserializeObject<GetApplicationByClientIdMqQuery>(message);
                 response = _repository.GetApplicationsByClientId(getCommand).ToList();
                 _logger.LogInformation($"Response from database: {response}");
                 
@@ -99,7 +100,7 @@ namespace Worker
                 var message = Encoding.UTF8.GetString(body);
                 _logger.LogInformation($"Consumer received message: {message}");
 
-                var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqCommand>(message);
+                var getCommand = JsonConvert.DeserializeObject<GetApplicationByRequestIdMqQuery>(message);
                 response = _repository.GetApplicationsByRequestId(getCommand).ToList();
                 _logger.LogInformation($"Response from database: {response}");
 

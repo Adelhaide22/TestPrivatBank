@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace WebApplication
+namespace WebApplication.Models
 {
     public class AddApplicationCommand
     {

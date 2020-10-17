@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using WebApplication.Models;
 
 namespace WebApplication.Controllers
 {
@@ -110,7 +111,7 @@ namespace WebApplication.Controllers
         }
         
         [HttpGet("ByRequestId")]
-        public IActionResult GetApplicationStatus(GetApplicationByRequestIdCommand command)
+        public IActionResult GetApplicationStatus(GetApplicationByRequestIdQuery command)
         {
             if (string.IsNullOrEmpty(command.RequestId))
             {
@@ -125,7 +126,7 @@ namespace WebApplication.Controllers
                 autoDelete: false,
                 arguments: null);
 
-            var mqCommand = new GetApplicationByRequestIdMqCommand
+            var mqCommand = new GetApplicationByRequestIdMqQuery
             {
                 RequestId = command.RequestId,
                 ClientIp = HttpContext.Connection.RemoteIpAddress.ToString(),
@@ -162,7 +163,7 @@ namespace WebApplication.Controllers
         }
         
         [HttpGet("ByClientId")]
-        public IActionResult GetApplicationStatus(GetApplicationByClientIdCommand command)
+        public IActionResult GetApplicationStatus(GetApplicationByClientIdQuery command)
         {
             _logger.LogInformation($"Processing request: {JsonConvert.SerializeObject(command)}");
             
@@ -178,7 +179,7 @@ namespace WebApplication.Controllers
                 autoDelete: false,
                 arguments: null);
 
-            var mqCommand = new GetApplicationByClientIdMqCommand()
+            var mqCommand = new GetApplicationByClientIdMqQuery()
             {
                 ClientId = command.ClientId,
                 DepartmentAddress = command.DepartmentAddress,
